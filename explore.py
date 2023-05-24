@@ -6,9 +6,9 @@ root = tree.getroot()
 
 # Iterate over the 'entry' elements
 for entry in root.findall('entry'):
-    entry_id = entry.get('id')
-    entry_name = entry.get('name')
-    entry_type = entry.get('type')
+    entry_id = entry.get('id') # Right id 
+    entry_name = entry.get('name') #  Right name 
+    entry_type = entry.get('type') # Right type
     entry_link = entry.get('link')
 
     # Extract the 'graphics' element within the 'entry'
@@ -21,6 +21,7 @@ for entry in root.findall('entry'):
     graphics_y = graphics.get('y')
     graphics_width = graphics.get('width')
     graphics_height = graphics.get('height')
+
 
     # Print the extracted information
     print(f"Entry ID: {entry_id}")
@@ -35,4 +36,19 @@ for entry in root.findall('entry'):
     print(f"Graphics Y: {graphics_y}")
     print(f"Graphics Width: {graphics_width}")
     print(f"Graphics Height: {graphics_height}")
+    print("----")
+
+# iterate over the 'relation' elements
+for relation in root.findall('relation'):
+    relation_entry1 = relation.get('entry1') # Right entry1
+    relation_entry2 = relation.get('entry2') # Right entry2
+
+    # Extract the 'subtype' element within the 'relation'
+    subtype = relation.find('subtype')
+    subtype_name = subtype.get('name') if subtype is not None else None # Right subtype name
+
+    # Print the extracted information
+    print(f"Relation Entry1: {relation_entry1}")
+    print(f"Relation Entry2: {relation_entry2}")
+    print(f"Subtype Name: {subtype_name}")
     print("----")
