@@ -30,7 +30,7 @@ class Pathway:
                     if relationship_type in ['activation', 'phosphorylation', 'binding/association']:
                         transferred_tokens = node.tokens
                         if node.consume_token(transferred_tokens):
-                            print(f"Transferring tokens from {node.gene_name} to {next_node.gene_name}")
+                            # print(f"Transferring tokens from {node.gene_name} to {next_node.gene_name}")
 
                             next_node.add_token(transferred_tokens)
 
@@ -188,7 +188,7 @@ def set_initial_tokens(pathway, gene_tokens):
 
 def update_plot(frame, pathway, node_pairs):
     ax.clear()
-    print(f'Frame: {frame}')
+
     if frame != 0:
         pathway.transfer_tokens()
 
@@ -214,6 +214,9 @@ def update_plot(frame, pathway, node_pairs):
                 ax.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='red')
             else: 
                 ax.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='black')
+            
+            # add the frame counter to the plot area
+            ax.text(0.5, 0.95, f'Frame: {frame}', transform=ax.transAxes, fontsize=10, verticalalignment='top', horizontalalignment='center')
 
             for pair in node_pairs:
                 if node.id == pair[0]:
