@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button 
+import random
 
 class Pathway:
     def __init__(self, name, org, number, title, length):
@@ -17,8 +18,33 @@ class Pathway:
 
 
     def transfer_tokens(pathway):
+        transfer_info = []
+
         for node in pathway.nodes:
-            for next_node_id in node.next_nodes:
+            # Check if the node has more than one next node and if it is not an inhibition transition
+            if len(node.next_nodes) > 1 and not any(transition.type == 'inhibition' for transition in pathway.transitions if transition.entry1 == node.id):
+                num_next_nodes = len(node.next_nodes)
+                transferred_tokens = node.tokens
+
+                if node.consume_token(transferred_tokens):
+                    # Calculate the number of tokens to transfer to each next node and the remaining tokens to transfer to the last next node.
+                    tokens_to_transfer = transferred_tokens // num_next_nodes
+                    remaining_tokens = transferred_tokens % num_next_nodes
+
+                    # Add the next nodes and the number of tokens to transfer to the transfer_info list.
+                    for next_node_id in node.next_nodes[:-1]:
+                        next_node = next((n for n in pathway.nodes if n.id == next_node_id), None)
+                        if next_node is not None:
+                            transfer_info.append((node, next_node, tokens_to_transfer))
+                    
+                    # Add the last next node and the number of tokens to transfer to the transfer_info list.
+                    last_next_node_id = node.next_nodes[-1]
+                    last_next_node = next((n for n in pathway.nodes if n.id == last_next_node_id), None)
+                    if last_next_node is not None:
+                        transfer_info.append((node, last_next_node, tokens_to_transfer + remaining_tokens))
+           
+            elif len(node.next_nodes) == 1:
+                next_node_id = node.next_nodes[0]
                 next_node = next((n for n in pathway.nodes if n.id == next_node_id), None)
                 if next_node is not None:
                     relationship_type = None
@@ -27,12 +53,24 @@ class Pathway:
                             relationship_type = transition.type
                             break
 
-                    if relationship_type in ['activation', 'phosphorylation', 'binding/association']:
+                    if relationship_type in ['activation', 'expression', 'binding/association']:
                         transferred_tokens = node.tokens
                         if node.consume_token(transferred_tokens):
-                            # print(f"Transferring tokens from {node.gene_name} to {next_node.gene_name}")
+                            transfer_info.append((node, next_node, transferred_tokens))
 
-                            next_node.add_token(transferred_tokens)
+        # for node, nnode, ttokens in transfer_info:
+        #     print(f"{node.gene_name} ({node.id}) -> {nnode.gene_name} ({nnode.id}) ({ttokens})")
+
+        # Shuffle the transfer_info list to randomize the firing order
+        random.shuffle(transfer_info)
+
+        # Perform the token transfers
+        for node, next_node, transferred_tokens in transfer_info:
+            next_node.add_token(transferred_tokens)
+            if transferred_tokens > 0:
+                # Print the token transfer information
+                print(f"{next_node.gene_name} ({next_node.id}) received ({transferred_tokens}) tokens from {node.gene_name}, current tokens: {next_node.tokens}, next nodes: {next_node.next_nodes}")
+        print("------------------")
 
 
 class Node:
@@ -252,42 +290,6 @@ def update_plot(frame, pathway, node_pairs):
     return ax
 
 
-tree = ET.parse('pathway.xml')
-root = tree.getroot()
-
-graph = nx.DiGraph()
-
-pathway = Pathway(
-    name=root.get('name'),
-    org=root.get('org'),
-    number=root.get('number'),
-    title=root.get('title'),
-    length=len(root)
-)
-
-pathway = load_pathway(root, pathway, graph)
-
-# Example usage
-gene_tokens = {
-    'TLR1': 10,
-    'TLR2': 5,
-    'TLR3': 3,
-    'TLR4': 7,
-    'TLR5': 2
-}
-
-set_initial_tokens(pathway, gene_tokens)
-
-starting_nodes = get_starting_nodes(pathway)
-
-# transition_pairs = get_transition_pairs(starting_nodes)    
-
-node_pairs = create_node_pairs(pathway.nodes)
-
-fig, ax = plt.subplots()
-
-frame_index = 0
-
 def next_frame(event):
     global frame_index
     frame_index += 1
@@ -297,12 +299,48 @@ def next_frame(event):
     update_plot(frame_index, pathway, node_pairs)
 
 
+# Start of main program
+tree = ET.parse('pathway.xml')
+root = tree.getroot()
+graph = nx.DiGraph()
+pathway = Pathway(
+    name=root.get('name'),
+    org=root.get('org'),
+    number=root.get('number'),
+    title=root.get('title'),
+    length=len(root)
+)
 
+# Initialize the pathway object. 
+pathway = load_pathway(root, pathway, graph)
 
-# animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
+# Set the initial tokens for the genes
+gene_tokens = {
+    'TLR1': 10,
+    'TLR2': 5,
+    'TLR3': 3,
+    'TLR4': 7,
+    'TLR5': 2
+}
+set_initial_tokens(pathway, gene_tokens)
+
+# Create the node pairs for the visualization of all the nodes.
+node_pairs = create_node_pairs(pathway.nodes)
+fig, ax = plt.subplots()
+frame_index = 0
+
+# Create the next frame button to display the each frame of the pathway.
 next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
 next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
 next_frame_button.on_clicked(next_frame)
 
+
+# Create the plot for the pathway.
 update_plot(frame_index, pathway, node_pairs)
 plt.show()
+
+
+# animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
+## Get the starting nodes and their transition pairs (TLR) specific. 
+# starting_nodes = get_starting_nodes(pathway)
+# transition_pairs = get_transition_pairs(starting_nodes)    
