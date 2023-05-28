@@ -2,6 +2,7 @@ import networkx as nx
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Button 
 
 class Pathway:
     def __init__(self, name, org, number, title, length):
@@ -13,6 +14,26 @@ class Pathway:
         self.nodes = []
         self.transitions = []
         self.groups = []
+
+
+    def transfer_tokens(pathway):
+        for node in pathway.nodes:
+            for next_node_id in node.next_nodes:
+                next_node = next((n for n in pathway.nodes if n.id == next_node_id), None)
+                if next_node is not None:
+                    relationship_type = None
+                    for transition in pathway.transitions:
+                        if transition.entry1 == node.id and transition.entry2 == next_node.id:
+                            relationship_type = transition.type
+                            break
+
+                    if relationship_type in ['activation', 'phosphorylation', 'binding/association']:
+                        transferred_tokens = node.tokens
+                        if node.consume_token(transferred_tokens):
+                            print(f"Transferring tokens from {node.gene_name} to {next_node.gene_name}")
+
+                            next_node.add_token(transferred_tokens)
+
 
 class Node:
     def __init__(self, node_type, name, node_id):
@@ -79,10 +100,10 @@ def get_nodes(root, pathway, graph):
             gene_name = graphics.get('name', '').split(',')[0].strip()
             node.set_gene_name(gene_name)
 
-            nodeX = graphics.get('x')
-            nodeY = graphics.get('y')
-            nodeWidth = graphics.get('width')
-            nodeHeight = graphics.get('height')
+            nodeX =int(graphics.get('x')) * 1.5
+            nodeY =int(graphics.get('y')) * 1.5
+            nodeWidth =int( graphics.get('width')) * 1.75
+            nodeHeight = int(graphics.get('height')) * 1.2
             node.set_graphics(nodeX, nodeY, nodeWidth, nodeHeight)
 
         pathway.nodes.append(node)
@@ -164,8 +185,12 @@ def set_initial_tokens(pathway, gene_tokens):
         if node.gene_name in gene_tokens:
             node.add_token(gene_tokens[node.gene_name])
 
-def update_plot(frame, node_pairs):
+
+def update_plot(frame, pathway, node_pairs):
     ax.clear()
+    print(f'Frame: {frame}')
+    if frame != 0:
+        pathway.transfer_tokens()
 
     color_mappings = {
         'expression': 'blue',
@@ -185,7 +210,10 @@ def update_plot(frame, node_pairs):
             rect = plt.Rectangle((x, y), width, height, facecolor='lightblue', edgecolor='black')
             ax.add_patch(rect)
             ax.text(x + 0.4 * width, y + 0.5 * height, node.gene_name, ha='center', va='center', fontsize=6)
-            ax.text(x + 0.7 * width, y + 5, f'({node.tokens})',  fontsize=7)
+            if node.tokens > 0:
+                ax.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='red')
+            else: 
+                ax.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='black')
 
             for pair in node_pairs:
                 if node.id == pair[0]:
@@ -212,10 +240,11 @@ def update_plot(frame, node_pairs):
     ax.legend(handles=legend_elements, loc='upper left', fontsize=7)
 
     ax.set_aspect('equal')
-    ax.set_xlim(0, 1400)
-    ax.set_ylim(0, 800)
+    ax.set_xlim(0, 1800)
+    ax.set_ylim(0, 1200)
 
     ax.set_title('Petri Net Visualization')
+    plt.draw()
 
     return ax
 
@@ -248,12 +277,29 @@ set_initial_tokens(pathway, gene_tokens)
 
 starting_nodes = get_starting_nodes(pathway)
 
-transition_pairs = get_transition_pairs(starting_nodes)    
+# transition_pairs = get_transition_pairs(starting_nodes)    
 
 node_pairs = create_node_pairs(pathway.nodes)
 
 fig, ax = plt.subplots()
 
-animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200)
+frame_index = 0
 
+def next_frame(event):
+    global frame_index
+    frame_index += 1
+    if frame_index >= 100:
+        frame_index = 0
+    # animation._draw_next_frame(frame_index)
+    update_plot(frame_index, pathway, node_pairs)
+
+
+
+
+# animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
+next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
+next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
+next_frame_button.on_clicked(next_frame)
+
+update_plot(frame_index, pathway, node_pairs)
 plt.show()
