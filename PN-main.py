@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button 
 import random
+import time
+
 
 class Pathway:
     def __init__(self, name, org, number, title, length):
@@ -126,7 +128,7 @@ class Group:
         self.name = group_name
 
 
-def get_nodes(root, pathway, graph):
+def add_nodes(root, pathway, graph):
     # Iterate over the entry elements and create nodes
     for entry in root.findall('entry[@type="gene"]'):
         entry_id = int(entry.get('id'))
@@ -151,7 +153,7 @@ def get_nodes(root, pathway, graph):
 
     return None
 
-def get_transitions(root, pathway, graph):
+def add_transitions(root, pathway, graph):
     # Iterate over the transition elements and create transitions
     for transition in root.findall('relation'):
         sender = int(transition.get('entry1'))
@@ -182,7 +184,7 @@ def get_transitions(root, pathway, graph):
 
 
 
-def get_groups(root, pathway):
+def add_groups(root, pathway):
     # Iterate over the group elements and create groups
     for group in root.findall('entry[@type="group"]'):
         group_name = group.get('name')
@@ -193,9 +195,9 @@ def get_groups(root, pathway):
     return None
     
 def load_pathway(root, pathway, graph):
-    get_nodes(root, pathway, graph)
-    get_transitions(root, pathway, graph)
-    get_groups(root, pathway)
+    add_nodes(root, pathway, graph)
+    add_transitions(root, pathway, graph)
+    add_groups(root, pathway)
 
     return pathway
 
@@ -315,6 +317,17 @@ def next_frame(event):
     update_plot(frame_index, pathway, node_pairs)
 
 
+def make_time_steps(event):
+    global frame_index
+    for _ in range(5):
+        frame_index += 1
+        if frame_index >= 100:
+            frame_index = 0
+        update_plot(frame_index, pathway, node_pairs)
+        plt.pause(3)  # Pause for 5 seconds between each time-step
+        plt.draw()
+    
+
 # Start of main program
 tree = ET.parse('pathway.xml')
 root = tree.getroot()
@@ -350,10 +363,15 @@ node_pairs = create_node_pairs(pathway.nodes)
 fig, ax = plt.subplots()
 frame_index = 0
 
-# Create the next frame button to display the each frame of the pathway.
+# Create the next frame button to display each frame of the pathway.
 next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
 next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
 next_frame_button.on_clicked(next_frame)
+
+# Create the make time-steps button to run 5 time-steps with a 5-second interval.
+make_time_steps_button_ax = plt.axes([0.6, 0.02, 0.18, 0.05])
+make_time_steps_button = Button(make_time_steps_button_ax, 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
+make_time_steps_button.on_clicked(make_time_steps)
 
 
 # Create the plot for the pathway.
