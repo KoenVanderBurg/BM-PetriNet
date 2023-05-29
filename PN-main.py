@@ -64,13 +64,16 @@ class Pathway:
         # Shuffle the transfer_info list to randomize the firing order
         random.shuffle(transfer_info)
 
+        print("New token distribution step: ")
+        print("---------------------------------------------------------")
+
         # Perform the token transfers
         for node, next_node, transferred_tokens in transfer_info:
             next_node.add_token(transferred_tokens)
             if transferred_tokens > 0:
                 # Print the token transfer information
-                print(f"{next_node.gene_name} ({next_node.id}) received ({transferred_tokens}) tokens from {node.gene_name}, current tokens: {next_node.tokens}, next nodes: {next_node.next_nodes}")
-        print("------------------")
+                print(f" ({transferred_tokens}) tokens {node.gene_name} ({node.id}) -> {next_node.gene_name} ({next_node.id}), {next_node.gene_name} tokens: {next_node.tokens}, next nodes: {next_node.next_nodes}")
+
 
 
 class Node:
@@ -154,10 +157,15 @@ def get_transitions(root, pathway, graph):
         sender = int(transition.get('entry1'))
         receiver = int(transition.get('entry2'))
 
+        # if sender or receiver > 190 skip this transition
+        if sender > 190 or receiver > 190:
+            continue
+
         # Add the receiver to the nextNodes of the sender.
         for node in pathway.nodes:
             if node.id == sender:
                 node.next_nodes.append(receiver)
+                # print(f"Added {receiver}  next_nodes of {sender}")
             if node.id == receiver:
                 node.prev_nodes.append(sender)
 
@@ -170,6 +178,9 @@ def get_transitions(root, pathway, graph):
         graph.add_edge(sender, receiver, type=subtype_name)
     
     return None
+
+
+
 
 def get_groups(root, pathway):
     # Iterate over the group elements and create groups
@@ -199,17 +210,22 @@ def get_starting_nodes(pathway):
 
 def create_node_pairs(nodes):
     pairs = {}
-    
+
     for node in nodes:
         current_id = node.id
-        
+
         for prev_id in node.prev_nodes:
-            pairs[(prev_id, current_id)] = True
-        
+            if any(n.id == prev_id for n in nodes):  # Check if previous node exists in the list
+                pairs[(prev_id, current_id)] = True
+
         for next_id in node.next_nodes:
-            pairs[(current_id, next_id)] = True
-    
+            next_node = next((n for n in nodes if n.id == next_id), None)  # Find the next node by ID
+            if next_node and next_node.type != 'group':  # Only consider non-group next nodes
+                pairs[(current_id, next_id)] = True
+
     return pairs
+
+
 
 def get_transition_pairs(starting_nodes):
     transition_pairs = []
@@ -314,10 +330,11 @@ pathway = Pathway(
 # Initialize the pathway object. 
 pathway = load_pathway(root, pathway, graph)
 
+
+
 # Set the initial tokens for the genes
 gene_tokens = {
     'TLR1': 10,
-    'TLR2': 5,
     'TLR3': 3,
     'TLR4': 7,
     'TLR5': 2
@@ -326,6 +343,10 @@ set_initial_tokens(pathway, gene_tokens)
 
 # Create the node pairs for the visualization of all the nodes.
 node_pairs = create_node_pairs(pathway.nodes)
+
+# for node1, node2 in node_pairs:
+#     print(f'{node1} -> {node2}')
+
 fig, ax = plt.subplots()
 frame_index = 0
 
