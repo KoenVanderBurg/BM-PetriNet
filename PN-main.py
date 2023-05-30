@@ -6,6 +6,65 @@ from matplotlib.widgets import Button
 import random
 import time
 
+def main() -> None:
+    # Start of main program
+    tree = ET.parse('pathway.xml')
+    root = tree.getroot()
+    graph = nx.DiGraph()
+    global pathway
+    pathway = Pathway(
+        name=root.get('name'),
+        org=root.get('org'),
+        number=root.get('number'),
+        title=root.get('title'),
+        length=len(root)
+    )
+
+    # Initialize the pathway object. 
+    pathway = load_pathway(root, pathway, graph)
+
+
+
+    # Set the initial tokens for the genes
+    gene_tokens = {
+        'TLR1': 10,
+        'TLR3': 3,
+        'TLR4': 7,
+        'TLR5': 2
+    }
+    set_initial_tokens(pathway, gene_tokens)
+
+    # Create the node pairs for the visualization of all the nodes.
+    global node_pairs
+    node_pairs = create_node_pairs(pathway.nodes)
+
+    # for node1, node2 in node_pairs:
+    #     print(f'{node1} -> {node2}')
+
+    global ax
+    fig, ax = plt.subplots()
+    global frame_index
+    frame_index = 0
+
+    # Create the next frame button to display each frame of the pathway.
+    next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
+    next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
+    next_frame_button.on_clicked(next_frame)
+
+    # Create the make time-steps button to run 5 time-steps with a 5-second interval.
+    make_time_steps_button_ax = plt.axes([0.6, 0.02, 0.18, 0.05])
+    make_time_steps_button = Button(make_time_steps_button_ax, 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
+    make_time_steps_button.on_clicked(make_time_steps)
+
+
+    # Create the plot for the pathway.
+    update_plot(frame_index, pathway, node_pairs)
+    plt.show()
+
+    # animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
+    ## Get the starting nodes and their transition pairs (TLR) specific. 
+    # starting_nodes = get_starting_nodes(pathway)
+    # transition_pairs = get_transition_pairs(starting_nodes)    
 
 class Pathway:
     def __init__(self, name, org, number, title, length):
@@ -326,60 +385,7 @@ def make_time_steps(event):
         update_plot(frame_index, pathway, node_pairs)
         plt.pause(3)  # Pause for 5 seconds between each time-step
         plt.draw()
-    
-
-# Start of main program
-tree = ET.parse('pathway.xml')
-root = tree.getroot()
-graph = nx.DiGraph()
-pathway = Pathway(
-    name=root.get('name'),
-    org=root.get('org'),
-    number=root.get('number'),
-    title=root.get('title'),
-    length=len(root)
-)
-
-# Initialize the pathway object. 
-pathway = load_pathway(root, pathway, graph)
 
 
-
-# Set the initial tokens for the genes
-gene_tokens = {
-    'TLR1': 10,
-    'TLR3': 3,
-    'TLR4': 7,
-    'TLR5': 2
-}
-set_initial_tokens(pathway, gene_tokens)
-
-# Create the node pairs for the visualization of all the nodes.
-node_pairs = create_node_pairs(pathway.nodes)
-
-# for node1, node2 in node_pairs:
-#     print(f'{node1} -> {node2}')
-
-fig, ax = plt.subplots()
-frame_index = 0
-
-# Create the next frame button to display each frame of the pathway.
-next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
-next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
-next_frame_button.on_clicked(next_frame)
-
-# Create the make time-steps button to run 5 time-steps with a 5-second interval.
-make_time_steps_button_ax = plt.axes([0.6, 0.02, 0.18, 0.05])
-make_time_steps_button = Button(make_time_steps_button_ax, 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
-make_time_steps_button.on_clicked(make_time_steps)
-
-
-# Create the plot for the pathway.
-update_plot(frame_index, pathway, node_pairs)
-plt.show()
-
-
-# animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
-## Get the starting nodes and their transition pairs (TLR) specific. 
-# starting_nodes = get_starting_nodes(pathway)
-# transition_pairs = get_transition_pairs(starting_nodes)    
+if __name__ == '__main__':
+    main()
