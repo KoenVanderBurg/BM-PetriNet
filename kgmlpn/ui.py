@@ -5,7 +5,7 @@ from kgmlpn.pathway import Pathway
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Arrow
-from matplotlib.widgets import Button
+
 
 def update_plot(ax: plt.Axes, pw: Pathway) -> None:
     """ Updates the plot with the current token distribution. """
