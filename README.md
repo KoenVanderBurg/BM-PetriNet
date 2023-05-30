@@ -2,6 +2,12 @@
 
 This tool allows you to create and simulate a Petri Net from a KGML file using and xml parser and matplotlib.
 
+## Requirements
+
+- python 3.11.2
+- pip 23.1.2
+- matplotlib 3.7.1
+
 ## Usage
 
 1. Clone the repository
