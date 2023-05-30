@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Arrow
 from matplotlib.widgets import Button 
 import random
 
@@ -11,7 +12,7 @@ import random
 def main() -> None:
     """ Entry point. """
     filename = 'pathway.xml'
-    global PW, AX, FI
+    global PW, AX
     PW = Pathway(filename)
 
     initial_marking = {
@@ -24,302 +25,249 @@ def main() -> None:
     PW.set_initial_marking(initial_marking)
 
     _, AX = plt.subplots()
-    FI = 0
 
-    # Create the next frame button to display each frame of the pathway.
-    next_frame_button_ax = plt.axes([0.8, 0.02, 0.1, 0.05])
-    next_frame_button = Button(next_frame_button_ax, 'Next Frame', color='lightgray', hovercolor='skyblue')
+    next_frame_button = Button(plt.axes([0.8, 0.02, 0.1, 0.05]), 'Next Frame', color='lightgray', hovercolor='skyblue')
     next_frame_button.on_clicked(next_frame)
 
-    # Create the make time-steps button to run 5 time-steps with a 5-second interval.
-    make_time_steps_button_ax = plt.axes([0.6, 0.02, 0.18, 0.05])
-    make_time_steps_button = Button(make_time_steps_button_ax, 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
+    make_time_steps_button = Button(plt.axes([0.6, 0.02, 0.18, 0.05]), 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
     make_time_steps_button.on_clicked(make_time_steps)
 
-
-    # Create the plot for the pathway.
     update_plot()
     plt.show()
 
-    # animation = FuncAnimation(fig, update_plot, fargs=(node_pairs,), frames=100, interval=200, blit = False)
-    ## Get the starting nodes and their transition pairs (TLR) specific. 
-    # starting_nodes = get_starting_nodes(pathway)
-    # transition_pairs = get_transition_pairs(starting_nodes)    
+    return
+
+
+class Node:
+    def __init__(self, id: int, kegg_handle: str, type: str, name: str, graph_props: dict) -> None:
+        """ Instantiates a Node object.
+
+        ## Args
+        - `int` id: unique identifier of the node
+            (xml source: entry > id)
+        - `str` kegg_handle: non-unique kegg identifier of the node
+            (xml source: entry > name)
+        - `str` type: type of the node
+            (xml source: entry > type)
+        - `str` name: name of the node
+            (xml source: entry > graphics > name)
+        - `dict` graph_props: dictionary containing the graphical properties of the node
+            (xml source: entry > graphics > x, y, width, height)
+        """
+        self.id = id
+        self.kegg_handle = kegg_handle
+        self.type = type
+        self.name = name
+        self.graph_props = graph_props
+
+        self.tokens = 0
+        self.outgoing: set[int] = set()
+        self.incoming: set[int] = set()
+        return
+
+    def update_tokens(self, n: int) -> None:
+        """ Updates the number of tokens in the node. """
+        assert self.tokens + n >= 0, \
+            f'Node {self.id} has {self.tokens} tokens and cannot be updated by {n} tokens.'
+        self.tokens += n
+        return
+
+    def __str__(self):
+        return f'Id: {self.id} Node: {self.name} (Tokens: {self.tokens}, Gene: {self.name}, In: {self.incoming}, Out: {self.outgoing})'
+
+    def __hash__(self):
+        return hash(self.id)
+    
+    def __eq__(self, other: 'Node'):
+        return self.id == other.id
+    
+    def __ne__(self, other: 'Node'):
+        return not self.__eq__(other)
+    
+    def __repr__(self) -> str:
+        return f'Node({self.id}, {self.kegg_handle}, {self.type}, {self.name}, {self.gp})'
+
+class Transition:
+    def __init__(self, from_id: int, to_id: int, type: str) -> None:
+        """ Instantiates a Transition object.
+
+        ## Args
+        - `int` from_id: id of the node the transition starts from
+            (xml source: relation > entry1)
+        - `int` to_id: id of the node the transition ends at
+            (xml source: relation > entry2)
+        - `str` type: type of the transition
+            (xml source: relation > subtype > name)
+        """
+        self.from_id = from_id
+        self.to_id = to_id
+        self.type = type
+
+    def __str__(self): 
+        return f'Transition: {self.from_id} -> {self.to_id} Type: {self.type}'
 
 class Pathway:
+
     def __init__(self, filename: str) -> None:
         """ Initialize the Pathway object from an KGML file. """
         
         assert os.path.exists(filename), \
             f'File {filename} does not exist in folder {os.getcwd()}'
 
-        self.root = ET.parse(filename).getroot()
-        self.name = self.root.get('name'),
-        self.org = self.root.get('org'),
-        self.number = self.root.get('number'),
-        self.title = self.root.get('title'),
-        self.length = len(self.root)
-        self.nodes: list[Node] = []
-        self.transitions: list[Transition] = []
-        self.groups: list[Group] = []
+        root = ElementTree.parse(filename).getroot()
+        self.name = root.get('name'),
+        self.org = root.get('org'),
+        self.number = root.get('number'),
+        self.title = root.get('title'),
+        self.length = len(root)
+        self.nodes = {}
+        self.transitions = set()
 
-        self.__add_nodes()
-        self.__add_transitions()
-        self.__add_groups()
-        self.__create_node_pairs()
+        self.nodes = self.extract_nodes(root)
+        self.transitions = self.extract_transitions(root)
+        self.update_node_connections()
+
+        self.buffer_template = {node_id: 0 for node_id in self.nodes.keys()}
+        self.steps_taken = 0
         return
 
-    def __add_nodes(self) -> None:
-        """ Add all the nodes in the pathway. """
-        for entry in self.root.iter('entry'):
+    def set_initial_marking(self, marking: dict[int, int]) -> None:
+        """ Adds tokens to some nodes in the pathway. """
+        for node_id, num_tokens in marking.items():
+            self.nodes[node_id].update_tokens(num_tokens)
+        return
+
+    @staticmethod
+    def extract_nodes(root: ElementTree.Element) -> dict[int, Node]:
+        """ Parses the root of the KGML file and extracts all nodes. """
+        nodes = {}
+        for entry in root.iter('entry'):
             # TODO: other types of entries exist, but are not used for now
-            if entry.get('type') != 'gene':
-                continue
-            # initialize node object
-            node = Node(
-                node_type = entry.get('type'),
-                name = entry.get('name'),
-                node_id = int(entry.get('id')),
-            )
-            # parse graphics element
+            if entry.get('type') != 'gene': continue
             graphics = entry.find('graphics')
-            if graphics is None:
-                print(f'No graphics found for node {node.name}')
-                continue
-            graphics_name: str = graphics.get('name', '')
-            node.set_gene_name(graphics_name.split(', ')[0])
-            node.set_graphics(
-                x = float(graphics.get('x')) * 1.5,
-                y = float(graphics.get('y')) * 1.5,
-                width = float(graphics.get('width')) * 1.75,
-                height = float(graphics.get('height')) * 1.25,
+            node = Node(
+                id = int(entry.get('id')),
+                kegg_handle = entry.get('name'),
+                type = entry.get('type'),
+                name = graphics.get('name', '').split(', ')[0],
+                graph_props = dict(
+                    x = float(graphics.get('x')) * 1.5,
+                    y = float(graphics.get('y')) * 1.5,
+                    w = float(graphics.get('width')) * 1.75,
+                    h = float(graphics.get('height')) * 1.25,
+                )
             )
-            # store node in list
-            self.nodes.append(node)
-        return
+            nodes.update({node.id: node})
+        return nodes
 
-    def __add_transitions(self) -> None:
-        """ Add all the transitions in the pathway. """
-        for transition in self.root.iter('relation'):
-            sender = int(transition.get('entry1'))
-            receiver = int(transition.get('entry2'))
+    @staticmethod
+    def extract_transitions(root: ElementTree.Element) -> set[Transition]:
+        """ Parses the root of the KGML file and extracts all transitions. """
+        transitions = set()
+        for relation in root.iter('relation'):
+            from_id = int(relation.get('entry1'))
+            to_id = int(relation.get('entry2'))
             # non-valid transitions link to a node with name "undefined"
             # in this case, their IDs happen to be > 190
             # TODO: make this work on other KGML files as well
-            if sender > 190 or receiver > 190:
+            if from_id > 190 or to_id > 190:
                 continue
-            # very inefficient way to find the corresponding nodes
-            for node in self.nodes:
-                if node.id == sender:
-                    node.next_nodes.append(receiver)
-                if node.id == receiver:
-                    node.prev_nodes.append(sender)
             # initialize transition object
-            transition_object = Transition(
-                entry1 = sender,
-                entry2 = receiver,
-                type = transition.get('subtype'),
+            transition = Transition(
+                from_id = from_id,
+                to_id = to_id,
+                type = subtype.get('name') if (subtype:=relation.find('subtype')) is not None else 'undefined'
             )
-            # store transition in list
-            self.transitions.append(transition_object)
-        return
-    
-    def __add_groups(self) -> None:
-        """ Add all the groups in the pathway. """
-        for entry in self.root.iter('entry'):
-            if entry.get('type') == 'group':
-                group_object = Group(group_name=entry.get('name'))
-                self.groups.append(group_object)
-        return
+            # store transition object
+            transitions.add(transition)
+        return transitions
 
-    def transfer_tokens(self) -> None:
-        transfer_info = []
-
-        for node in self.nodes:
-            # Check if the node has more than one next node and if it is not an inhibition transition
-            if len(node.next_nodes) > 1 and not any(transition.type == 'inhibition' for transition in self.transitions if transition.entry1 == node.id):
-                num_next_nodes = len(node.next_nodes)
-                transferred_tokens = node.tokens
-
-                if node.consume_token(transferred_tokens):
-                    # Calculate the number of tokens to transfer to each next node and the remaining tokens to transfer to the last next node.
-                    tokens_to_transfer = transferred_tokens // num_next_nodes
-                    remaining_tokens = transferred_tokens % num_next_nodes
-
-                    # Add the next nodes and the number of tokens to transfer to the transfer_info list.
-                    for next_node_id in node.next_nodes[:-1]:
-                        next_node = next((n for n in self.nodes if n.id == next_node_id), None)
-                        if next_node is not None:
-                            transfer_info.append((node, next_node, tokens_to_transfer))
-                    
-                    # Add the last next node and the number of tokens to transfer to the transfer_info list.
-                    last_next_node_id = node.next_nodes[-1]
-                    last_next_node = next((n for n in self.nodes if n.id == last_next_node_id), None)
-                    if last_next_node is not None:
-                        transfer_info.append((node, last_next_node, tokens_to_transfer + remaining_tokens))
-           
-            elif len(node.next_nodes) == 1:
-                next_node_id = node.next_nodes[0]
-                next_node = next((n for n in self.nodes if n.id == next_node_id), None)
-                if next_node is not None:
-                    relationship_type = None
-                    for transition in self.transitions:
-                        if transition.entry1 == node.id and transition.entry2 == next_node.id:
-                            relationship_type = transition.type
-                            break
-
-                    if relationship_type in ['activation', 'expression', 'binding/association']:
-                        transferred_tokens = node.tokens
-                        if node.consume_token(transferred_tokens):
-                            transfer_info.append((node, next_node, transferred_tokens))
-
-        # for node, nnode, ttokens in transfer_info:
-        #     print(f"{node.gene_name} ({node.id}) -> {nnode.gene_name} ({nnode.id}) ({ttokens})")
-
-        # Shuffle the transfer_info list to randomize the firing order
-        random.shuffle(transfer_info)
-
-        print("New token distribution step: ")
-        print("---------------------------------------------------------")
-
-        # Perform the token transfers
-        for node, next_node, transferred_tokens in transfer_info:
-            next_node.add_token(transferred_tokens)
-            if transferred_tokens > 0:
-                # Print the token transfer information
-                print(f" ({transferred_tokens}) tokens {node.gene_name} ({node.id}) -> {next_node.gene_name} ({next_node.id}), {next_node.gene_name} tokens: {next_node.tokens}, next nodes: {next_node.next_nodes}")
-
-    def set_initial_marking(self, data: dict) -> None:
-        """ Adds tokens to some nodes in the pathway. """
-        for node in self.nodes:
-            if node.id in data:
-                node.add_token(data[node.id])
+    def update_node_connections(self) -> None:
+        """ Updates the incoming and outgoing connections of all nodes. """
+        for transition in self.transitions:
+            self.nodes[transition.from_id].outgoing.add(transition.to_id)
+            self.nodes[transition.to_id].incoming.add(transition.from_id)
         return
 
-    def __create_node_pairs(self) -> None:
-        """ Create pairs of nodes that are connected. """
-        pairs: dict = {}
-        for node in self.nodes:
-            current_id = node.id
-            for prev_id in node.prev_nodes:
-                # check if prev node exists in node list
-                if prev_id in [n.id for n in self.nodes]:
-                    pairs[(prev_id, current_id)] = True
+    @property
+    def active_nodes(self) -> set[int]:
+        """ Returns the ids of all nodes that have at least one token. """
+        return {node.id for node in self.nodes.values() if node.tokens > 0}
 
-            for next_id in node.next_nodes:
-                # check if next node exists in node list
-                if next_id in [n.id for n in self.nodes]:
-                    # TODO: check if the group filter is necessary
-                    pairs[(current_id, next_id)] = True
-        self.node_pairs = pairs
+    def step(self, verbose: bool = False) -> None:
+        """ Fires all possible transition. """
+
+        if verbose: print('-' * 80); self.print_state()
+
+        buffer = self.buffer_template.copy()
+
+        for node_id in self.active_nodes:
+            node = self.nodes[node_id]
+            if not node.outgoing: continue
+            num_next_nodes = len(node.outgoing)
+            baseline = node.tokens // num_next_nodes
+            remainder = node.tokens % num_next_nodes
+
+            # distribute the baseline tokens
+            for next_node_id in node.outgoing:
+                buffer[next_node_id] += baseline
+            # then we randomly distribute the remainder
+            for _ in range(remainder):
+                next_node_id = random.choice(list(node.outgoing))
+                buffer[next_node_id] += 1
+            # finally, we remove all tokens from the current node
+            buffer[node_id] -= node.tokens
+
+        # execute the instructions in the buffer
+        for node_id, num_tokens in buffer.items():
+            if num_tokens: self.nodes[node_id].update_tokens(num_tokens)
+
+        if verbose: self.print_state()
+
+        self.steps_taken += 1
         return
 
-
-class Node:
-    def __init__(self, node_type, name, node_id):
-        self.type = node_type
-        self.name = name
-        self.gene_name = None
-        self.id = node_id
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.tokens = 0
-        self.next_nodes = []
-        self.prev_nodes = []
-    
-    def set_gene_name(self, gene_name):
-        self.gene_name = gene_name
-
-    def set_graphics(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def add_token(self, count):
-        self.tokens += count
-
-    def consume_token(self, count):
-        if self.tokens >= count:
-            self.tokens -= count
-            return True
-        return False
-    
-    def __str__(self):
-        return f"Id: {self.id} Node: {self.name} (Tokens: {self.tokens}, Gene: {self.gene_name}, prev: {self.prev_nodes}, next: {self.next_nodes})"
-
-class Transition:
-    def __init__(self, entry1, entry2, type):
-        self.entry1 = entry1
-        self.entry2 = entry2
-        self.type = type
-
-    def __str__(self): 
-        return f"Transition: {self.entry1} -> {self.entry2} Type: {self.type}"
-
-class Group:
-    def __init__(self, group_name):
-        self.name = group_name
-
+    def print_state(self) -> None:
+        """ Prints the current state of the pathway. """
+        print(', '.join([f'{self.nodes[nid].name} ({self.nodes[nid].tokens})' for nid in self.active_nodes]))
+        return
 
 def update_plot() -> None:
     """ Updates the plot with the current token distribution. """
     
     AX.clear()
 
-    if FI != 0:
-        PW.transfer_tokens()
-
     color_mappings = {
         'expression': 'blue',
         'activation': 'green',
         'phosphorylation': 'red',
         'binding/association': 'orange',
-        'inhibition': 'purple'
+        'inhibition': 'purple',
+        'undefined': 'black',
     }
 
-    for node in PW.nodes:
-        if node.x is not None and node.y is not None and node.width is not None and node.height is not None:
-            x = int(node.x)
-            y = int(node.y)
-            width = int(node.width)
-            height = int(node.height)
+    for node in PW.nodes.values():
+        x, y, w, h = node.graph_props.values()
 
-            rect = plt.Rectangle((x, y), width, height, facecolor='lightblue', edgecolor='black')
-            AX.add_patch(rect)
-            AX.text(x + 0.4 * width, y + 0.5 * height, node.gene_name, ha='center', va='center', fontsize=6)
-            if node.tokens > 0:
-                AX.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='red')
-            else: 
-                AX.text(x + 0.7 * width, y + 5, f'{node.tokens}',  fontsize=7, color='black')
-            
-            # add the frame counter to the plot area
-            AX.text(0.5, 0.95, f'Frame: {FI}', transform=AX.transAxes, fontsize=10, verticalalignment='top', horizontalalignment='center')
+        edgecolor = 'red' if node.tokens else 'black'
+        AX.add_patch(Rectangle((x, y), w, h, facecolor='lightblue', edgecolor=edgecolor))
+        AX.text(x + 0.4 * w, y + 0.5 * h, node.name, ha='center', va='center', fontsize=6)
+        if node.tokens:
+            AX.text(x + 0.7 * w, y + 5, f'{node.tokens}',  fontsize=7, color='black')
 
-            for pair in PW.node_pairs.keys():
-                print(pair)
-                if pair[0] == node.id:
-                    start_x = x + 0.5 * width
-                    start_y = y + 0.5 * height
-                    for other_node in PW.nodes:
-                        if other_node.id == pair[1]:
-                            end_x = int(other_node.x) + 0.5 * int(other_node.width)
-                            end_y = int(other_node.y) + 0.5 * int(other_node.height)
-                            relationship_type = None
-                            for transition in PW.transitions:
-                                if transition.entry1 == pair[0] and transition.entry2 == pair[1]:
-                                    relationship_type = transition.type
-                                    break
-                            print(relationship_type)
-                            color = color_mappings.get(relationship_type, 'black')
-                            AX.plot([start_x + 0.5 * width, end_x - 0.5 * width], [start_y, end_y], color=color)
-                            AX.plot(start_x + 0.55 * width, start_y, 'go', markersize=5)
-                            AX.plot(end_x - 0.55 * width, end_y, 'ro', markersize=5)
+    for transition in PW.transitions:
+        from_node = PW.nodes[transition.from_id]
+        to_node = PW.nodes[transition.to_id]
+        from_x, from_y, from_w, from_h = from_node.graph_props.values()
+        to_x, to_y, to_w, to_h = to_node.graph_props.values()
+        from_x += from_w
+        from_y += from_h / 2
+        to_y += to_h / 2
+        color = color_mappings[transition.type]
+        AX.add_patch(Arrow(from_x, from_y, to_x - from_x, to_y - from_y, width=0.5, color=color))
 
     legend_elements = [
-        plt.Line2D([0], [0], color=color, lw=1, label=relationship_type)
+        Arrow(0, 0, 0, 0, width=0.5, color=color, label=relationship_type)
         for relationship_type, color in color_mappings.items()
     ]
     AX.legend(handles=legend_elements, loc='upper left', fontsize=7)
@@ -327,28 +275,23 @@ def update_plot() -> None:
     AX.set_aspect('equal')
     AX.set_xlim(0, 1800)
     AX.set_ylim(0, 1200)
-
     AX.set_title('Petri Net Visualization')
-    plt.draw()
+
     return
 
 def next_frame(event: any) -> None:
-    global FI
-    FI += 1
-    if FI >= 100:
-        FI = 0
+    PW.step()
     update_plot()
+    plt.draw()
+    return
 
-
-def make_time_steps(event):
-    global FI
+def make_time_steps(event: any) -> None:
     for _ in range(5):
-        FI += 1
-        if FI >= 100:
-            FI = 0
+        PW.step()
         update_plot()
-        plt.pause(3)  # Pause for 5 seconds between each time-step
+        plt.pause(5)
         plt.draw()
+    return
 
 
 if __name__ == '__main__':
