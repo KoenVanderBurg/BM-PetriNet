@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Internal imports
 from kgmlpn.pathway import Pathway
 
+# External imports
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Arrow
 

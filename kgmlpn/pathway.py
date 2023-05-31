@@ -36,6 +36,7 @@ class Pathway:
 
     def set_initial_marking(self, marking: dict[int, int]) -> None:
         """ Adds tokens to some nodes in the pathway. """
+
         for node_id, num_tokens in marking.items():
             self.nodes[node_id].update_tokens(num_tokens)
         return
@@ -43,17 +44,18 @@ class Pathway:
     @staticmethod
     def extract_nodes(root: ElementTree.Element) -> dict[int, Node]:
         """ Parses the root of the KGML file and extracts all nodes. """
+
         nodes = {}
         for entry in root.iter('entry'):
-            # TODO: other types of entries exist, but are not used for now
+            #TODO: other types of entries exist, but are not used for now  NOTE:(yes groups, but they are not nodes, they are collections of nodes) -@koenv at 31/05/2023, 09:37:36
             if entry.get('type') != 'gene': continue
             graphics = entry.find('graphics')
             node = Node(
                 id = int(entry.get('id')),
-                kegg_handle = entry.get('name'),
+                kegg_id = entry.get('name'),
                 type = entry.get('type'),
-                name = graphics.get('name', '').split(', ')[0],
-                graph_props = dict(
+                name = graphics.get('name', '').split(', ')[0], #NOTE: this is a bit of a hack since it is not full name, but it works for now -@koenv at 31/05/2023, 09:37:36
+                graph_props = dict( 
                     x = float(graphics.get('x')) * 1.5,
                     y = float(graphics.get('y')) * 1.5,
                     w = float(graphics.get('width')) * 1.75,
@@ -66,12 +68,13 @@ class Pathway:
     @staticmethod
     def extract_transitions(root: ElementTree.Element) -> set[Transition]:
         """ Parses the root of the KGML file and extracts all transitions. """
+
         transitions = set()
         for relation in root.iter('relation'):
             from_id = int(relation.get('entry1'))
             to_id = int(relation.get('entry2'))
-            # non-valid transitions link to a node with name "undefined"
-            # in this case, their IDs happen to be > 190
+            # non-valid transitions link to a group with name "undefined" -> not sure about handling this. 
+            # in this case, their IDs happen to be > 190  #HACK: this is a hack, but it works for now -@koenv at 31/05/2023, 09:37:36
             # TODO: make this work on other KGML files as well
             if from_id > 190 or to_id > 190:
                 continue
@@ -87,6 +90,7 @@ class Pathway:
 
     def update_node_connections(self) -> None:
         """ Updates the incoming and outgoing connections of all nodes. """
+
         for transition in self.transitions:
             self.nodes[transition.from_id].outgoing.add(transition.to_id)
             self.nodes[transition.to_id].incoming.add(transition.from_id)
@@ -95,6 +99,7 @@ class Pathway:
     @property
     def active_nodes(self) -> set[int]:
         """ Returns the ids of all nodes that have at least one token. """
+
         return {node.id for node in self.nodes.values() if node.tokens > 0}
 
     def step(self, verbose: bool = False) -> None:
@@ -107,6 +112,8 @@ class Pathway:
         for node_id in self.active_nodes:
             node = self.nodes[node_id]
             if not node.outgoing: continue
+
+            # calculate the number of tokens to distribute (one version of token distribution). 
             num_next_nodes = len(node.outgoing)
             baseline = node.tokens // num_next_nodes
             remainder = node.tokens % num_next_nodes
@@ -132,5 +139,6 @@ class Pathway:
 
     def print_state(self) -> None:
         """ Prints the current state of the pathway. """
+        
         print(', '.join([f'{self.nodes[nid].name} ({self.nodes[nid].tokens})' for nid in self.active_nodes]))
         return
