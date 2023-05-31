@@ -1,6 +1,7 @@
 # BM-PetriNet
 
-This tool allows you to create and simulate a Petri Net from a KGML file using and xml parser and matplotlib.
+This tool allows you to render and simulate a Petri Net from a KGML (KEGG database) file. \
+Due to limiting factors, only basic data exploration is possible, thus this is not a tool to base fully fledged experiments on.   
 
 ## Requirements
 
