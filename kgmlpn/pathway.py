@@ -48,7 +48,7 @@ class Pathway:
         nodes = {}
         for entry in root.iter('entry'):
             #TODO: other types of entries exist, but are not used for now  NOTE:(yes groups, but they are not nodes, they are collections of nodes) -@koenv at 31/05/2023, 09:37:36
-            if entry.get('type') != 'gene': continue
+            if entry.get('type') in ['map', 'group']: continue
             graphics = entry.find('graphics')
             node = Node(
                 id = int(entry.get('id')),
@@ -98,7 +98,7 @@ class Pathway:
 
     @property
     def active_nodes(self) -> set[int]:
-        """ Returns the ids of all nodes that have at least one token. """
+        """ The ids of all nodes that have at least one token. """
 
         return {node.id for node in self.nodes.values() if node.tokens > 0}
 

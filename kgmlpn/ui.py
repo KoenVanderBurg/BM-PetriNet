@@ -20,6 +20,9 @@ def update_plot(ax: plt.Axes, pw: Pathway) -> None:
         'phosphorylation': 'red',
         'binding/association': 'orange',
         'inhibition': 'purple',
+        'dephosphorylation': 'brown',
+        'indirect effect': 'pink',
+        'compound': 'yellow',
         'undefined': 'black',
     }
 
@@ -40,7 +43,7 @@ def update_plot(ax: plt.Axes, pw: Pathway) -> None:
         from_x += from_w
         from_y += from_h / 2
         to_y += to_h / 2
-        color = color_mappings[transition.type]
+        color = color_mappings[transition.name]
         ax.add_patch(Arrow(from_x, from_y, to_x - from_x, to_y - from_y, width=0.5, color=color))
 
     legend_elements = [
