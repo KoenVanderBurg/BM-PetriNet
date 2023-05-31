@@ -82,7 +82,7 @@ class Pathway:
             transition = Transition(
                 from_id = from_id,
                 to_id = to_id,
-                type = subtype.get('name') if (subtype:=relation.find('subtype')) is not None else 'undefined'
+                name = subtype.get('name') if (subtype:=relation.find('subtype')) is not None else 'undefined'
             )
             # store transition object
             transitions.add(transition)
