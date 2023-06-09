@@ -19,5 +19,5 @@ dependencies = [
 "Homepage" = "https://github.com/KoenVanderBurg/BM-PetriNet"
 
 [project.scripts]
-kgmlpn = "kgmlpn.main:main"
+KGML_PetriNet = "KGML_PetriNet.main:main"
 

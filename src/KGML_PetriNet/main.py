@@ -3,8 +3,8 @@
 
 import argparse
 
-from kgmlpn.pathway import Pathway
-from kgmlpn.ui import update_plot
+from KGML_PetriNet.pathway import Pathway
+from KGML_PetriNet.ui import update_plot
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button 
