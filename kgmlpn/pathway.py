@@ -127,6 +127,27 @@ class Pathway:
             self.nodes[transition.to_id].incoming.add(transition.from_id)
         return
 
+    def set_knockouts(self, knockouts) -> None:
+        """Sets the knockouts of all nodes."""
+
+        for id in knockouts.values():
+            node = self.nodes[id]
+            node.knockout = True
+            self.remove_transitions(node)
+        return
+
+    def remove_transitions(self, node):
+        """Removes incoming and outgoing transitions for a given node."""
+
+        for transition in self.transitions:
+            if transition.to_id == node.id:
+                try:
+                    self.nodes[transition.from_id].outgoing.remove(node.id)
+                    node.incoming.remove(transition.from_id)
+                except KeyError:
+                    print(f'KeyError: {transition.from_id} not in transitions of {node.name} anymore')
+                    pass
+
     @property
     def active_nodes(self) -> set[int]:
         """ The ids of all nodes that have at least one token. """

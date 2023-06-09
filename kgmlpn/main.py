@@ -41,8 +41,11 @@ def main() -> None:
     make_grouping_button = Button(plt.axes([0.3, 0.02, 0.10, 0.05]), 'Show groups', color='lightgray', hovercolor='skyblue')
     make_grouping_button.on_clicked(plot_grouping)
 
-    make_rm_grouping_button = Button(plt.axes([0.2, 0.02, 0.10, 0.05]), 'Remove groups', color='lightgray', hovercolor='skyblue')
-    make_rm_grouping_button.on_clicked(remove_grouping)
+    rm_grouping_button = Button(plt.axes([0.2, 0.02, 0.10, 0.05]), 'Remove groups', color='lightgray', hovercolor='skyblue')
+    rm_grouping_button.on_clicked(remove_grouping)
+
+    set_knockouts = Button(plt.axes([0.5, 0.02, 0.10, 0.05]), 'Set knockouts', color='lightgray', hovercolor='skyblue')
+    set_knockouts.on_clicked(knockout)
 
     update_plot(AX, PW, G)
     plt.show()
@@ -50,21 +53,33 @@ def main() -> None:
     return
 
 def step(event: any) -> None:
+    """ Perform one step of the simulation."""
     PW.step(V)
     update_plot(AX, PW, G)
     plt.draw()
     return
 
 def plot_grouping(event: any) -> None:
+    """ Plot the groups."""
     global G 
     G = True
     update_plot (AX, PW, G)
     plt.draw()
 
 def remove_grouping(event: any) -> None:
+    """ Remove the groups."""
     global G
     G = False
     update_plot (AX, PW, G)
+    plt.draw()
+
+def knockout(event: any) -> None:
+    knockouts = {
+        'RAC1'   : 38,
+        'TICAM2' : 65
+    }
+    PW.set_knockouts(knockouts)
+    update_plot(AX, PW, G)
     plt.draw()
 
 if __name__ == '__main__':

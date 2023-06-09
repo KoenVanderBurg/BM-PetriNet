@@ -28,6 +28,7 @@ class Node:
         self.tokens = 0
         self.outgoing: set[int] = set()
         self.incoming: set[int] = set()
+        self.knockout = False
         return
 
     def update_tokens(self, n: int) -> None:

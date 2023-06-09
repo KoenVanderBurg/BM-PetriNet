@@ -30,16 +30,24 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
     for node in pw.nodes.values():
         x, y, w, h = node.graph_props.values()
 
-        edgecolor = 'red' if node.tokens else 'black'
-        ax.add_patch(Rectangle((x, y), w, h, facecolor='lightblue', edgecolor=edgecolor))
-        ax.text(x + 0.4 * w, y + 0.5 * h, node.name, ha='center', va='center', fontsize=6)
-        if node.tokens:
-            ax.text(x + 0.7 * w, y + 5, f'{node.tokens}',  fontsize=7, color='black')
+        if node.knockout:
+            edgecolor = 'red'
+            ax.add_patch(Rectangle((x, y), w, h, facecolor='lightgrey', edgecolor=edgecolor))
+            # Add diagonal lines
+            ax.plot([x, x+w], [y, y+h], color=edgecolor)
+            ax.plot([x+w, x], [y, y+h], color=edgecolor)
+
+        if not node.knockout: 
+            edgecolor = 'hotpink' if node.tokens else 'black'
+            linestyle = (0, (5,1)) if node.tokens else 'solid'
+            ax.add_patch(Rectangle((x, y), w, h, facecolor='lightblue', edgecolor=edgecolor, linewidth = 1.5, linestyle = linestyle))
+            ax.text(x + 0.4 * w, y + 0.5 * h, node.name, ha='center', va='center', fontsize=6)
+            if node.tokens:
+                ax.text(x + 0.7 * w, y + 5, f'{node.tokens}',  fontsize=7, color='black')
 
     # Draw grouped nodes. 
     if G:
         for node in pw.groups.values():
-            
             x, y, w, h = node.graphics.values()
             ax.add_patch(Rectangle((x, y - (0.4 * h)), w, h * 1.2 , facecolor='none', edgecolor= 'purple'))
             ax.text(x + 0.4 * w, y + 1.1 * h, node.id, ha='center', va='center', fontsize=7)
