@@ -28,7 +28,7 @@ pip install -e .
 4. Run the project
 
 ```bash
-kgmlpn path/to/kgml/file
+KGML_PetriNet path/to/kgml/file
 ```
 
 ## Extra information	
