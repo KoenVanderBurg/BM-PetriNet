@@ -12,7 +12,9 @@ description = "A package to convert KGML files to Petri Nets"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
- "matplotlib~=3.7.1"
+ "matplotlib~=3.7.1",
+ "numpy~=1.24",
+ "pytest~=7.3.1"
 ]
 
 [project.urls]
