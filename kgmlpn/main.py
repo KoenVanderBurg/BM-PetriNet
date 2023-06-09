@@ -33,11 +33,15 @@ def main() -> None:
 
     PW.set_initial_marking(initial_marking)
 
+    # Add buttons to the plot
     next_frame_button = Button(plt.axes([0.8, 0.02, 0.1, 0.05]), 'Next Frame', color='lightgray', hovercolor='skyblue')
     next_frame_button.on_clicked(step)
 
-    make_time_steps_button = Button(plt.axes([0.6, 0.02, 0.18, 0.05]), 'Make Time-Steps', color='lightgray', hovercolor='skyblue')
+    make_time_steps_button = Button(plt.axes([0.6, 0.02, 0.18, 0.05]), 'Move tokens (5)', color='lightgray', hovercolor='skyblue')
     make_time_steps_button.on_clicked(five_steps)
+
+    make_grouping_button = Button(plt.axes([0.4, 0.02, 0.1, 0.05]), 'Show groups', color='lightgray', hovercolor='skyblue')
+    make_grouping_button.on_clicked(plot_grouping)
 
     update_plot(AX, PW)
     plt.show()
@@ -54,9 +58,13 @@ def five_steps(event: any) -> None:
     for _ in range(5):
         PW.step(V)
         update_plot(AX, PW)
-        plt.pause(5)
+        plt.pause(3)
         plt.draw()
     return
+
+def plot_grouping(event: any) -> None:
+    update_plot (AX, PW, group = True)
+    plt.draw()
 
 
 if __name__ == '__main__':

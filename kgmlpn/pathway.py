@@ -7,6 +7,7 @@ from xml.etree import ElementTree
 
 from kgmlpn.node import Node
 from kgmlpn.transition import Transition
+from kgmlpn.groups import Group
 
 
 class Pathway:
@@ -25,11 +26,13 @@ class Pathway:
         self.length = len(root)
         self.nodes = {}
         self.transitions = set()
+        self.groups = {}
 
         self.nodes = self.extract_nodes(root)
         self.transitions = self.extract_transitions(root)
         self.update_node_connections()
-
+        self.groups = self.extract_groups(root)
+        
         self.buffer_template = {node_id: 0 for node_id in self.nodes.keys()}
         self.steps_taken = 0
         return
@@ -66,6 +69,34 @@ class Pathway:
         return nodes
 
     @staticmethod
+    def extract_groups(root: ElementTree.Element) -> dict[int, Group]:
+        """Parses the root of KGML file and extracts group nodes"""
+        
+        groups = {}
+        for entry in root.iter('entry'):
+            if entry.get('type') != 'group': continue
+            graphics = entry.find('graphics')
+            group_nodes = {}
+            for component in entry.find('component'):
+                component_id = int(component.get('id'))
+                group_nodes.update({component_id: component_id})
+
+            group = Group(
+                id = int(entry.get('id')),
+                name = entry.get('name'),
+                group_nodes = group_nodes,
+                graphics = dict(
+                    x = float(graphics.get('x')) * 1.5,
+                    y = float(graphics.get('y')) * 1.5,
+                    w = float(graphics.get('width')) * 1.75,
+                    h = float(graphics.get('height')) * 1.25,
+                )
+            )
+            groups.update({group.id: group})
+
+        return groups
+
+    @staticmethod
     def extract_transitions(root: ElementTree.Element) -> set[Transition]:
         """ Parses the root of the KGML file and extracts all transitions. """
 
@@ -74,8 +105,8 @@ class Pathway:
             from_id = int(relation.get('entry1'))
             to_id = int(relation.get('entry2'))
             # non-valid transitions link to a group with name "undefined" -> not sure about handling this. 
-            # in this case, their IDs happen to be > 190  #HACK: this is a hack, but it works for now -@koenv at 31/05/2023, 09:37:36
-            # TODO: make this work on other KGML files as well
+            # in this case, their IDs happen to be > 190  #HACK:  it works for now -@koenv at 31/05/2023, 09:37:36
+
             if from_id > 190 or to_id > 190:
                 continue
             # initialize transition object
