@@ -4,6 +4,8 @@
 name: Python application
 
 on:
+  commit:
+    branches: [ "main" ]
   push:
     branches: [ "main"]
   pull_request:
