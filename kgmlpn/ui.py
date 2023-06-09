@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Arrow
 
 
-def update_plot(ax: plt.Axes, pw: Pathway, group : bool = False) -> None:
+def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
     """ Updates the plot with the current token distribution. """
 
     ax.clear()
@@ -26,6 +26,7 @@ def update_plot(ax: plt.Axes, pw: Pathway, group : bool = False) -> None:
         'undefined': 'black',
     }
 
+    # Draw nodes.
     for node in pw.nodes.values():
         x, y, w, h = node.graph_props.values()
 
@@ -35,11 +36,11 @@ def update_plot(ax: plt.Axes, pw: Pathway, group : bool = False) -> None:
         if node.tokens:
             ax.text(x + 0.7 * w, y + 5, f'{node.tokens}',  fontsize=7, color='black')
 
-    #  Draw groups
-    if group:
+    # Draw grouped nodes. 
+    if G:
         for node in pw.groups.values():
-            x, y, w, h = node.graphics.values()
             
+            x, y, w, h = node.graphics.values()
             ax.add_patch(Rectangle((x, y - (0.4 * h)), w, h * 1.2 , facecolor='none', edgecolor= 'purple'))
             ax.text(x + 0.4 * w, y + 1.1 * h, node.id, ha='center', va='center', fontsize=7)
 
