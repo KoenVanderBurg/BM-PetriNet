@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Internal imports
-from kgmlpn.pathway import Pathway
+from KGML_PetriNet.pathway import Pathway
 
 # External imports
 import matplotlib.pyplot as plt
