@@ -1,3 +1,24 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "KGML_PetriNet"
+version = "0.0.1"
+authors = [{name="K.H.P van der Burg", email ="koenvanderburg@live.nl"},
+            {name="J. Hamelink", email ="jdhamelink0@gmail.com"}] 
+            
+description = "A package to convert KGML files to Petri Nets"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+ "matplotlib~=3.7.1"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/KoenVanderBurg/BM-PetriNet"
+
+[project.scripts]
+kgmlpn = "kgmlpn.main:main"
+
