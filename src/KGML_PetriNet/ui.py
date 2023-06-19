@@ -64,12 +64,26 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
                         fontsize=7,
                         color='black')
 
-    # Draw grouped nodes. 
+    # Draw groups around nodes. . 
     if G:
         for node in pw.groups.values():
             x, y, w, h = node.graphics.values()
-            ax.add_patch(Rectangle((x, y - (0.4 * h)), w, h * 1.2 , facecolor='none', edgecolor= 'purple'))
-            ax.text(x + 0.4 * w, y + 1.1 * h, node.id, ha='center', va='center', fontsize=7)
+            ax.add_patch(Rectangle(
+                        (x - (0.1 * w), y - (0.45 * h)),
+                        w * 1.25, 
+                        h * 1.35 , 
+                        facecolor='none', 
+                        edgecolor= 'purple',
+                        linewidth= 1.5,
+                        linestyle= (0, (5,1)) 
+                        ))
+                        
+            ax.text(x + 0.4 * w, 
+                    y + 1.1 * h, 
+                    node.id,
+                    ha='center',
+                    va='center',
+                    fontsize=7)
 
 
     for transition in pw.transitions:

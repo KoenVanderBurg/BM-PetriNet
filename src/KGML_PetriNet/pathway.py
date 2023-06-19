@@ -104,7 +104,6 @@ class Pathway:
         for relation in root.iter('relation'):
             from_id = int(relation.get('entry1'))
             to_id = int(relation.get('entry2'))
-            # non-valid transitions link to a group with name "undefined" -> not sure about handling this. 
             # in this case, their IDs happen to be > 190  #HACK:  it works for now -@koenv at 31/05/2023, 09:37:36
 
             if from_id > 190 or to_id > 190:
@@ -142,6 +141,7 @@ class Pathway:
         for transition in self.transitions:
             if transition.to_id == node.id:
                 try:
+    
                     self.nodes[transition.from_id].outgoing.remove(node.id)
                     node.incoming.remove(transition.from_id)
                 except KeyError:
