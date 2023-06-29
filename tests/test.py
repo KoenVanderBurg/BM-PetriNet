@@ -2,8 +2,8 @@ import pytest
 import matplotlib.pyplot as plt
 import os
 
-from KGML_PetriNet.pathway import Pathway
-import KGML_PetriNet as PN
+from KGML_PN.pathway import Pathway
+import KGML_PN as PN
 
 # Load the test data
 @pytest.fixture

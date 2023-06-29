@@ -5,9 +5,9 @@ import os
 import random
 from xml.etree import ElementTree
 
-from KGML_PetriNet.node import Node
-from KGML_PetriNet.transition import Transition
-from KGML_PetriNet.groups import Group
+from KGML_PN.node import Node
+from KGML_PN.transition import Transition
+from KGML_PN.groups import Group
 
 
 class Pathway:

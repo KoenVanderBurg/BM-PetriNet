@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 # Internal imports
-from KGML_PetriNet.pathway import Pathway
-
+from KGML_PN.pathway import Pathway
 # External imports
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrow
-
-
 def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
     """ Updates the plot with the current token distribution. """
-
     ax.clear()
-
     color_mappings = {
         'expression': 'blue',
         'activation': 'green',
@@ -25,7 +19,6 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
         'compound': 'yellow',
         'undefined': 'black',
     }
-
     # Draw nodes.
     for node in pw.nodes.values():
         x, y, w, h = node.graph_props.values()
@@ -39,31 +32,26 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
             # Add knockout symbol.
             ax.plot([x, x+w], [y, y+h], color=edgecolor)
             ax.plot([x+w, x], [y, y+h], color=edgecolor)
-
         # Add normal nodes.
         if not node.knockout: 
             edgecolor = 'hotpink' if node.tokens else 'black'
             linestyle = (0, (5,1)) if node.tokens else 'solid'
-
             ax.add_patch(Rectangle((x, y), w, h,
                             facecolor='lightblue',
                             edgecolor=edgecolor,
                             linewidth = 1.5,
                             linestyle = linestyle))
-
             ax.text(x + 0.4 * w, y + 0.5 * h,
                     node.name,
                     ha='center',
                     va='center',
                     fontsize=6)
-
             # Add token count.
             if node.tokens:
                 ax.text(x + 0.7 * w, y + 5,
                         f'{node.tokens}',
                         fontsize=7,
                         color='black')
-
     # Draw groups around nodes. . 
     if G:
         for node in pw.groups.values():
@@ -84,8 +72,6 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
                     ha='center',
                     va='center',
                     fontsize=7)
-
-
     for transition in pw.transitions:
         from_node = pw.nodes[transition.from_id]
         to_node = pw.nodes[transition.to_id]
@@ -102,7 +88,6 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
             head_width= 2,
             overhang= 0.9,
             length_includes_head=True))
-
     legend_elements = [
         FancyArrow(0, 0, 0, 0, 
                 width=0.5,
@@ -111,11 +96,9 @@ def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
         for relationship_type, color in color_mappings.items()
     ]
     ax.legend(handles=legend_elements, loc='upper left', fontsize=7)
-
     ax.set_aspect('equal')
     ax.set_xlim(0, 1800)
     ax.set_ylim(100, 1200)
     ax.axis('off')
     ax.set_title('Petri Net Visualization')
-
     return
