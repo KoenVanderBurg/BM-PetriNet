@@ -1,107 +1,86 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from PyQt5.QtGui import QPainter, QBrush, QColor
-from PyQt5.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+
 from KGML_PN.pathway import Pathway
 from KGML_PN.ui import update_plot
 
-class NetworkPlotWidget(QWidget):
-    def __init__(self):
-        super(NetworkPlotWidget, self).__init__()
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button 
 
-        # Create a Figure instance
-        self.figure = Figure()
 
-        # Create a FigureCanvas instance
-        self.canvas = FigureCanvas(self.figure)
+def main() -> None:
+    """ Entry point. """
+    
+    parser = argparse.ArgumentParser(description='Visualize a KEGG pathway as a Petri Net.')
+    parser.add_argument('filename', type=str, help='Path to the KEGG pathway xml file.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Print additional information.')
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s 0.0.1')
+    args = parser.parse_args()
 
-        # Create an axis
-        self.ax = self.figure.add_subplot(111)
+    global PW, AX, V, G
+    PW = Pathway(args.filename)
+    _, AX = plt.subplots()
+    V = args.verbose
+    G = False
 
-        # Set the layout
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.canvas)
+    initial_marking = {
+        60: 10,  # TLR1
+        58: 3,   # TLR3
+        64: 7,   # TLR4
+        57: 2    # TLR5
+    }
 
-    def update_plot(self, pw: Pathway, G: bool = False):
-        self.ax.clear()
-        update_plot(self.ax, pw, G)
-        self.canvas.draw()
+    PW.set_initial_marking(initial_marking)
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
+    # Add buttons to the plot
+    next_frame_button = Button(plt.axes([0.8, 0.02, 0.10, 0.05]), 'Next Frame', color='lightgray', hovercolor='skyblue')
+    next_frame_button.on_clicked(step)
 
-        # Create a central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+    make_grouping_button = Button(plt.axes([0.3, 0.02, 0.10, 0.05]), 'Show groups', color='lightgray', hovercolor='skyblue')
+    make_grouping_button.on_clicked(plot_grouping)
 
-        # Create a vertical layout for the central widget
-        layout = QVBoxLayout()
-        central_widget.setLayout(layout)
+    rm_grouping_button = Button(plt.axes([0.2, 0.02, 0.10, 0.05]), 'Remove groups', color='lightgray', hovercolor='skyblue')
+    rm_grouping_button.on_clicked(remove_grouping)
 
-        # Create a widget for the plotting area
-        plotting_widget = NetworkPlotWidget()
-        layout.addWidget(plotting_widget)
+    set_knockouts = Button(plt.axes([0.5, 0.02, 0.10, 0.05]), 'Set knockouts', color='lightgray', hovercolor='skyblue')
+    set_knockouts.on_clicked(knockout)
 
-        # Create a horizontal layout for the buttons
-        buttons_layout = QHBoxLayout()
+    update_plot(AX, PW, G)
+    plt.show()
 
-        # Create buttons and add them to the layout
-        button1 = QPushButton("Next Frame")
-        button2 = QPushButton("Show Groups")
-        button3 = QPushButton("Remove Groups")
-        button4 = QPushButton("Set Knockouts")
-        buttons_layout.addWidget(button1)
-        buttons_layout.addWidget(button2)
-        buttons_layout.addWidget(button3)
-        buttons_layout.addWidget(button4)
+    return
 
-        # Add the buttons layout to the central layout
-        layout.addLayout(buttons_layout)
+def step(event: any) -> None:
+    """ Perform one step of the simulation."""
+    PW.step(V)
+    update_plot(AX, PW, G)
+    plt.draw()
+    return
 
-        # Set the window properties
-        self.setWindowTitle("Petri Net Application")
-        self.setGeometry(100, 100, 800, 600)
+def plot_grouping(event: any) -> None:
+    """ Plot the groups."""
+    global G 
+    G = True
+    update_plot (AX, PW, G)
+    plt.draw()
 
-        # Connect button signals to slots
-        button1.clicked.connect(self.next_frame)
-        button2.clicked.connect(self.show_groups)
-        button3.clicked.connect(self.remove_groups)
-        button4.clicked.connect(self.set_knockouts)
+def remove_grouping(event: any) -> None:
+    """ Remove the groups."""
+    global G
+    G = False
+    update_plot (AX, PW, G)
+    plt.draw()
 
-        # Example usage to update the plot
-        pw = Pathway("pathway.xml")  # Replace with your Pathway instance
-        plotting_widget.update_plot(pw, G=False)
-
-        self.plotting_widget = plotting_widget
-        self.pw = pw
-        self.G = False
-
-    def next_frame(self):
-        self.pw.step(verbose=True)
-        self.plotting_widget.update_plot(self.pw, self.G)
-
-    def show_groups(self):
-        self.G = True
-        self.plotting_widget.update_plot(self.pw, self.G)
-
-    def remove_groups(self):
-        self.G = False
-        self.plotting_widget.update_plot(self.pw, self.G)
-
-    def set_knockouts(self):
-        knockouts = {
-            'RAC1': 38,
-            'TICAM2': 65
-        }
-        self.pw.set_knockouts(knockouts)
-        self.plotting_widget.update_plot(self.pw, self.G)
-
+def knockout(event: any) -> None:
+    knockouts = {
+        'RAC1'   : 38,
+        'TICAM2' : 65
+    }
+    PW.set_knockouts(knockouts)
+    update_plot(AX, PW, G)
+    plt.draw()
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    main()

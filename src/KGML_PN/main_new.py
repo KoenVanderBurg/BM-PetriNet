@@ -1,25 +1,19 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from PyQt5.QtGui import QPainter, QBrush, QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGridLayout, QLabel, QLineEdit
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from KGML_PN.pathway import Pathway
 from KGML_PN.ui import update_plot
+
+# Widget for displaying the network plot
 class NetworkPlotWidget(QWidget):
     def __init__(self):
         super(NetworkPlotWidget, self).__init__()
-
-        # Create a Figure instance
         self.figure = Figure()
-
-        # Create a FigureCanvas instance
         self.canvas = FigureCanvas(self.figure)
-
-        # Create an axis
         self.ax = self.figure.add_subplot(111)
-
-        # Set the layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.canvas)
 
@@ -28,68 +22,72 @@ class NetworkPlotWidget(QWidget):
         update_plot(self.ax, pw, G)
         self.canvas.draw()
 
-
+# Main application window
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        # Create a central widget
+        # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Create a horizontal layout for the central widget
-        layout = QHBoxLayout()
-        central_widget.setLayout(layout)
+        # Create horizontal layout for the central widget
+        layout = QHBoxLayout(central_widget)
 
-        # Create a widget for the buttons
+        # Create widget for buttons
         buttons_widget = QWidget()
-        buttons_layout = QVBoxLayout()
-        buttons_widget.setLayout(buttons_layout)
+        buttons_layout = QGridLayout(buttons_widget)
 
         # Create buttons and add them to the layout
-        button1 = QPushButton("Next Frame")
-        button2 = QPushButton("Show Groups")
-        button3 = QPushButton("Remove Groups")
-        button4 = QPushButton("Set Knockouts")
-        buttons_layout.addWidget(button1)
-        buttons_layout.addWidget(button2)
-        buttons_layout.addWidget(button3)
-        buttons_layout.addWidget(button4)
+        frame_button = QPushButton("Next Frame")
+        show_g_button = QPushButton("Show Groups")
+        rm_g_button = QPushButton("Remove Groups")
+        knockout_button = QPushButton("Set Knockouts")
+        buttons = [frame_button, knockout_button, show_g_button, rm_g_button]
 
-        # Create a widget for the plotting area
+        # Set button font and size
+        button_font = QFont("Times", 10, QFont.Bold)
+        for i, button in enumerate(buttons):
+            button.setFont(button_font)
+            button.setFixedSize(175, 100)
+            buttons_layout.addWidget(button, i // 2, i % 2)
+
+        # Set button layout properties
+        buttons_layout.setSpacing(20)
+        buttons_layout.setAlignment(Qt.AlignBottom | Qt.AlignLeft)
+
+        # Create widget for the plotting area
         plotting_widget = NetworkPlotWidget()
 
         # Add widgets to the horizontal layout
-        layout.addWidget(buttons_widget)
         layout.addWidget(plotting_widget)
-        layout.setStretch(0, 1)
-        layout.setStretch(1, 4)
+        layout.addWidget(buttons_widget)
+        layout.setStretch(0, 4)
+        layout.setStretch(1, 1)
 
-        # Set the window properties
+        # Set window properties
         self.setWindowTitle("Petri Net Application")
-        self.setGeometry(100, 100, 800, 600)
+        # maximize the window
+        self.showMaximized()
+
 
         # Connect button signals to slots
-        button1.clicked.connect(self.next_frame)
-        button2.clicked.connect(self.show_groups)
-        button3.clicked.connect(self.remove_groups)
-        button4.clicked.connect(self.set_knockouts)
+        frame_button.clicked.connect(self.next_frame)
+        show_g_button.clicked.connect(self.show_groups)
+        rm_g_button.clicked.connect(self.remove_groups)
+        knockout_button.clicked.connect(self.set_knockouts)
 
         # Example usage to update the plot
-        pw = Pathway("pathway.xml")  # Replace with your Pathway instance
+        pw = Pathway("pathway.xml")
         plotting_widget.update_plot(pw, G=False)
 
+        # Store references to widgets and variables
         self.plotting_widget = plotting_widget
         self.pw = pw
         self.G = False
 
         # Set the initial markings
-        initial_markings = {
-            60: 10,  # TLR1
-            58: 3,   # TLR3
-            64: 7,   # TLR4
-            57: 2    # TLR5
-        }
+        initial_markings = {60: 10, 58: 3, 64: 7, 57: 2} # id : count tokens
         self.pw.set_initial_marking(initial_markings)
         self.plotting_widget.update_plot(self.pw, self.G)
 
@@ -106,13 +104,9 @@ class MainWindow(QMainWindow):
         self.plotting_widget.update_plot(self.pw, self.G)
 
     def set_knockouts(self):
-        knockouts = {
-            'RAC1': 38,
-            'TICAM2': 65
-        }
+        knockouts = {'RAC1': 38, 'TICAM2': 65}
         self.pw.set_knockouts(knockouts)
         self.plotting_widget.update_plot(self.pw, self.G)
-
 
 
 if __name__ == '__main__':
