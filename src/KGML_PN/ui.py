@@ -5,6 +5,7 @@ from KGML_PN.pathway import Pathway
 # External imports
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrow
+
 def update_plot(ax: plt.Axes, pw: Pathway, G : bool = False) -> None:
     """ Updates the plot with the current token distribution. """
     ax.clear()
