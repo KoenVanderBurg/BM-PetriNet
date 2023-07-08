@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 
 [project]
-name = "KGML_PetriNet"
+name = "KGML_PN"
 version = "0.0.1"
 authors = [{name="K.H.P van der Burg", email ="koenvanderburg@live.nl"},
             {name="J. Hamelink", email ="jdhamelink0@gmail.com"}] 

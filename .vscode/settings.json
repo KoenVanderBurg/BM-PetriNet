@@ -1,7 +1,7 @@
 {
     "python.analysis.extraPaths": [
         "./src",
-        "./src/KGML_PetriNet"
+        "./src/KGML_PN"
     ],
    
     "python.testing.pytestArgs": [
